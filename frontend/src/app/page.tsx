@@ -6,9 +6,9 @@ export default function Home() {
       <nav className="h-16 sm:h-20 bg-slate-900/95 backdrop-blur-sm border-b border-slate-700/50 flex items-center justify-between px-4 sm:px-6 lg:px-8">
         <div className="flex items-center space-x-2">
           <div className="w-8 h-8 bg-linear-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">✂️</span>
+            <span className="text-white font-bold text-sm">🔗</span>
           </div>
-          <h1 className="text-white text-lg sm:text-xl font-bold">SnipUrl</h1>
+          <h1 className="text-white text-lg sm:text-xl font-bold">LinkNex</h1>
         </div>
         <div className="text-gray-400 text-xs sm:text-sm hidden sm:block">
           Fast & Secure URL Shortening

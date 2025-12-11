@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SnipUrl - URL Shortener",
-  description: "Transform your long URLs into beautiful short links with SnipUrl.",
+  title: "LinkNex - URL Shortener",
+  description: "Transform your long URLs into beautiful short links with LinkNex.",
 };
 
 export default function RootLayout({
