@@ -1,6 +1,9 @@
+import logging
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from app.api.v1.router import api_router
 from app.core.config import settings
+from app.core.health import startup_health_check
 
 from fastapi import Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
@@ -8,10 +11,24 @@ from sqlalchemy.orm import Session
 from app.services.url_service import URLService
 from app.database.database import get_db
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    startup_health_check()
+    yield
+    pass
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="URL Shortener API"
+    description="URL Shortener API",
+    lifespan=lifespan
 )
 
 app.include_router(api_router, prefix="/api/v1")
