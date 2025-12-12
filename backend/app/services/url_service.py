@@ -20,6 +20,12 @@ class URLService:
     def create_short_url(db: Session, original_url: str, short_code: str = None, expires_in_days=30):
         from app.models.url import URL
         
+        # Check if URL already exists when custom alias is provided
+        if short_code:
+            existing_url = db.query(URL).filter(URL.long_url == original_url).first()
+            if existing_url:
+                raise URLAlreadyExistsError(existing_url)
+        
         # Generate short code if not provided
         if not short_code:
             short_code = URLService._generate_unique_short_code(db, original_url)

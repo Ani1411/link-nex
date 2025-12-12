@@ -24,12 +24,26 @@ def create_url(url_data: URLCreate, db: Session = Depends(get_db)):
         )
         
     except URLAlreadyExistsError as e:
-        # Return existing URL instead of error
-        return URLResponse(
-            short_url=f"http://localhost:8000/{e.existing_url.short_code}",
-            original_url=e.existing_url.long_url,
-            expires_at=str(e.existing_url.expires_at) if e.existing_url.expires_at else None
-        )
+        # Check if custom alias was provided
+        if url_data.custom_alias:
+            raise HTTPException(
+                status_code=400, 
+                detail={
+                    "message": f"URL already shortened. Existing short code: {e.existing_url.short_code}",
+                    "existing_url": {
+                        "short_url": f"http://localhost:8000/{e.existing_url.short_code}",
+                        "original_url": e.existing_url.long_url,
+                        "expires_at": str(e.existing_url.expires_at) if e.existing_url.expires_at else None
+                    }
+                }
+            )
+        else:
+            # Return existing URL for auto-generated codes
+            return URLResponse(
+                short_url=f"http://localhost:8000/{e.existing_url.short_code}",
+                original_url=e.existing_url.long_url,
+                expires_at=str(e.existing_url.expires_at) if e.existing_url.expires_at else None
+            )
     
     except ShortCodeAlreadyExistsError:
         raise HTTPException(status_code=400, detail="Custom alias already exists. Please choose a different one.")
