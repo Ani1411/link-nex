@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     BASE_URL: str = "http://localhost:8000"
     REDIS_URL: str # "redis://localhost:6379/0"
     CACHE_TTL: int = 60 * 60 * 24
+    CORS_ORIGINS: str
     
     class Config:
         env_file = ".env"
