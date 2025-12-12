@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from app.api.v1.router import api_router
 from app.core.config import settings
-from app.core.health import startup_health_check
+from app.core.health import startup_health_check, get_database_health
 
 from fastapi import Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
@@ -42,6 +42,12 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+
+@app.get("/health/db")
+async def db_health_check():
+    """Comprehensive database health check with detailed metrics"""
+    return get_database_health()
 
 
 @app.get("/{short_code}")
