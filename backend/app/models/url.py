@@ -8,7 +8,7 @@ class URL(Base):
     __tablename__ = "urls"
     
     id = Column(UUID, primary_key=True, index=True, default=uuid4)
-    long_url = Column(String, nullable=False, unique=True)
+    long_url = Column(String, nullable=False, unique=True, index=True)
     short_code = Column(String, unique=True, index=True, nullable=False)
     expires_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
