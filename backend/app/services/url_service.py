@@ -86,6 +86,7 @@ class URLService:
     @staticmethod
     def delete_url(db: Session, short_code: str = None, long_url: str = None):
         from app.models.url import URL
+        from app.services.cache_service import CacheService
         
         query = db.query(URL)
         
@@ -97,6 +98,7 @@ class URLService:
         url = query.first()
         
         if url:
+            CacheService.invalidate_cache(url.short_code)
             db.delete(url)
             db.commit()
             return True
@@ -105,11 +107,27 @@ class URLService:
     
     @staticmethod
     def get_url_by_short_code(db: Session, short_code: str):
+        from app.services.cache_service import CacheService
         from app.models.url import URL
+        
+        # Try cache first
+        cached_data = CacheService.get_url_from_cache(short_code)
+        if cached_data:
+            # Convert cached dict back to URL-like object
+            class CachedURL:
+                def __init__(self, data):
+                    self.long_url = data['long_url']
+                    self.short_code = data['short_code']
+                    self.expires_at = data.get('expires_at')
+            
+            return CachedURL(cached_data)
+        
+        # If not in cache, query database
         url = db.query(URL).filter(URL.short_code == short_code).first()
         if not url:
             return None
         
+        # Check expiration
         if url.expires_at:
             expires_at = url.expires_at
             if expires_at.tzinfo is None:
@@ -117,4 +135,7 @@ class URLService:
             
             if datetime.now(timezone.utc) > expires_at:
                 return None
+        
+        # Cache the result
+        CacheService.cache_url(short_code, url)
         return url
