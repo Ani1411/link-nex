@@ -8,7 +8,7 @@ app = FastAPI(
     description="URL Shortener API"
 )
 
-app.include_router(api_router, prefix="/api/v1")
+app.include_router(api_router, prefix="/urls")
 
 @app.get("/")
 async def root():
