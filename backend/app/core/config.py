@@ -3,8 +3,8 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     PROJECT_NAME: str = "URL Shortener"
     VERSION: str = "1.0.0"
-    DATABASE_URL: str = "postgresql://username:password@localhost:5432/url_shortener_db"
-    SECRET_KEY: str = "your-secret-key-here"
+    DATABASE_URL: str # "postgresql://username:password@localhost:5432/url_shortener_db"
+    SECRET_KEY: str # "your-secret-key-here"
     BASE_URL: str = "http://localhost:8000"
     
     class Config:

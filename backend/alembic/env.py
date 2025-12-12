@@ -8,8 +8,12 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from app.database.database import Base
 from app.models.url import URL
+from app.core.config import settings
 
 config = context.config
+
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
