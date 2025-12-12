@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from app.schemas.url import URLCreate, URLResponse, URLListResponse
 from app.services.url_service import URLService, URLAlreadyExistsError, ShortCodeAlreadyExistsError
@@ -27,7 +27,7 @@ def create_url(url_data: URLCreate, db: Session = Depends(get_db)):
         # Check if custom alias was provided
         if url_data.custom_alias:
             raise HTTPException(
-                status_code=400, 
+                status_code=status.HTTP_400_BAD_REQUEST, 
                 detail={
                     "message": f"URL already shortened. Existing short code: {e.existing_url.short_code}",
                     "existing_url": {
@@ -46,10 +46,10 @@ def create_url(url_data: URLCreate, db: Session = Depends(get_db)):
             )
     
     except ShortCodeAlreadyExistsError:
-        raise HTTPException(status_code=400, detail="Custom alias already exists. Please choose a different one.")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Custom alias already exists. Please choose a different one.")
     
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Internal server error: {str(e)}")
 
 
 @router.get("/list", response_model=URLListResponse, tags=["urls"])
@@ -80,7 +80,7 @@ def list_urls(
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Internal server error: {str(e)}")
 
 
 @router.delete("/delete", tags=["urls"])
@@ -91,7 +91,7 @@ def delete_url(
 ):
     """Delete URL by short code or long URL"""
     if not short_code and not long_url:
-        raise HTTPException(status_code=400, detail="Either short_code or long_url must be provided")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Either short_code or long_url must be provided")
     
     try:
         deleted = URLService.delete_url(db, short_code, long_url)
@@ -99,7 +99,7 @@ def delete_url(
         if deleted:
             return {"message": "URL deleted successfully"}
         else:
-            raise HTTPException(status_code=404, detail="URL not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="URL not found")
             
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Internal server error: {str(e)}")
