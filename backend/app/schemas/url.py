@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import List
 
 
 class URLCreate(BaseModel):
@@ -11,3 +12,11 @@ class URLResponse(BaseModel):
     short_url: str
     original_url: str
     expires_at: str | None = None
+
+
+class URLListResponse(BaseModel):
+    urls: List[URLResponse]
+    total: int
+    page: int
+    limit: int
+    total_pages: int

@@ -68,3 +68,37 @@ class URLService:
         
         # If we can't find a unique code after max_attempts, use longer code
         return generate_entropy_code(original_url, length=8)
+    
+    @staticmethod
+    def get_urls_paginated(db: Session, page: int, limit: int):
+        from app.models.url import URL
+        
+        offset = (page - 1) * limit
+        
+        # Get total count
+        total = db.query(URL).count()
+        
+        # Get paginated results
+        urls = db.query(URL).offset(offset).limit(limit).all()
+        
+        return urls, total
+    
+    @staticmethod
+    def delete_url(db: Session, short_code: str = None, long_url: str = None):
+        from app.models.url import URL
+        
+        query = db.query(URL)
+        
+        if short_code:
+            query = query.filter(URL.short_code == short_code)
+        elif long_url:
+            query = query.filter(URL.long_url == long_url)
+        
+        url = query.first()
+        
+        if url:
+            db.delete(url)
+            db.commit()
+            return True
+        
+        return False

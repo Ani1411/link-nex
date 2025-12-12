@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from app.schemas.url import URLCreate, URLResponse
+from app.schemas.url import URLCreate, URLResponse, URLListResponse
 from app.services.url_service import URLService, URLAlreadyExistsError, ShortCodeAlreadyExistsError
 from app.database.database import get_db
 
@@ -48,5 +48,58 @@ def create_url(url_data: URLCreate, db: Session = Depends(get_db)):
     except ShortCodeAlreadyExistsError:
         raise HTTPException(status_code=400, detail="Custom alias already exists. Please choose a different one.")
     
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@router.get("/list", response_model=URLListResponse, tags=["urls"])
+def list_urls(
+    db: Session = Depends(get_db),
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(10, ge=1, le=100, description="Items per page")
+):
+    """List all URLs with pagination"""
+    try:
+        urls, total = URLService.get_urls_paginated(db, page, limit)
+        
+        url_responses = [
+            URLResponse(
+                short_url=f"http://localhost:8000/{url.short_code}",
+                original_url=url.long_url,
+                expires_at=str(url.expires_at) if url.expires_at else None
+            )
+            for url in urls
+        ]
+        
+        return URLListResponse(
+            urls=url_responses,
+            total=total,
+            page=page,
+            limit=limit,
+            total_pages=(total + limit - 1) // limit
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@router.delete("/delete", tags=["urls"])
+def delete_url(
+    short_code: str = Query(None, description="Short code to delete"),
+    long_url: str = Query(None, description="Long URL to delete"),
+    db: Session = Depends(get_db)
+):
+    """Delete URL by short code or long URL"""
+    if not short_code and not long_url:
+        raise HTTPException(status_code=400, detail="Either short_code or long_url must be provided")
+    
+    try:
+        deleted = URLService.delete_url(db, short_code, long_url)
+        
+        if deleted:
+            return {"message": "URL deleted successfully"}
+        else:
+            raise HTTPException(status_code=404, detail="URL not found")
+            
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
