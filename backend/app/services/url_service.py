@@ -102,3 +102,19 @@ class URLService:
             return True
         
         return False
+    
+    @staticmethod
+    def get_url_by_short_code(db: Session, short_code: str):
+        from app.models.url import URL
+        url = db.query(URL).filter(URL.short_code == short_code).first()
+        if not url:
+            return None
+        
+        if url.expires_at:
+            expires_at = url.expires_at
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            
+            if datetime.now(timezone.utc) > expires_at:
+                return None
+        return url
