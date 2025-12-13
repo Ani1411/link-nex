@@ -1,16 +1,17 @@
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
+from sqlalchemy.orm import Session
+
+
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.health import startup_health_check, get_database_health
-
-from fastapi import Depends, HTTPException, status
-from fastapi.responses import RedirectResponse
-from sqlalchemy.orm import Session
-from app.services.url_service import URLService
 from app.database.database import get_db
+from app.middleware.rate_limit import rate_limit_middleware
+from app.services.url_service import URLService
 
 # Configure logging
 logging.basicConfig(
@@ -29,16 +30,19 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     description="URL Shortener API",
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url="/redoc" if settings.DEBUG else None
 )
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[origin.strip() for origin in settings.CORS_ORIGINS.split(",")],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["Content-Type", "Authorization"],
 )
+app.middleware("http")(rate_limit_middleware)
 
 app.include_router(api_router, prefix="/api/v1")
 
@@ -60,7 +64,7 @@ async def db_health_check():
 
 
 @app.get("/{short_code}")
-async def redirect_url(short_code:str, db: Session = Depends(get_db)):
+def redirect_url(short_code: str, db: Session = Depends(get_db)):
     """Redirect to the original URL given a short code"""
 
     url = URLService.get_url_by_short_code(short_code=short_code, db=db)
