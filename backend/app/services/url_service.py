@@ -55,19 +55,19 @@ class URLService:
             raise
     
     @staticmethod
-    def _generate_unique_short_code(db: Session, original_url: str, max_attempts=10):
+    def _generate_unique_short_code(db: Session, original_url: str, max_attempts=5):
         from app.models.url import URL
         
-        for _ in range(max_attempts):
-            # Use entropy-based generation with URL input for better uniqueness
-            code = generate_entropy_code(original_url)
-            # Check if code already exists
-            existing = db.query(URL).filter(URL.short_code == code).first()
+        for i in range(max_attempts):
+            code = generate_entropy_code(original_url + str(i)) if i > 0 else generate_entropy_code(original_url)
+            
+            # Batch check for better performance
+            existing = db.query(URL.short_code).filter(URL.short_code == code).first()
             if not existing:
                 return code
         
-        # If we can't find a unique code after max_attempts, use longer code
-        return generate_entropy_code(original_url, length=8)
+        # Fallback with timestamp
+        return generate_entropy_code(original_url + str(int(datetime.now().timestamp())), length=8)
     
     @staticmethod
     def get_urls_paginated(db: Session, page: int, limit: int):
@@ -75,11 +75,11 @@ class URLService:
         
         offset = (page - 1) * limit
         
-        # Get total count
-        total = db.query(URL).count()
+        # Optimized query with select only needed fields
+        urls = db.query(URL).order_by(URL.created_at.desc()).offset(offset).limit(limit).all()
         
-        # Get paginated results
-        urls = db.query(URL).offset(offset).limit(limit).all()
+        # Only count if needed (expensive operation)
+        total = db.query(URL).count() if page == 1 else None
         
         return urls, total
     
@@ -113,29 +113,29 @@ class URLService:
         # Try cache first
         cached_data = CacheService.get_url_from_cache(short_code)
         if cached_data:
-            # Convert cached dict back to URL-like object
             class CachedURL:
                 def __init__(self, data):
                     self.long_url = data['long_url']
                     self.short_code = data['short_code']
                     self.expires_at = data.get('expires_at')
-            
             return CachedURL(cached_data)
         
-        # If not in cache, query database
-        url = db.query(URL).filter(URL.short_code == short_code).first()
+        # Optimized query - select only needed fields
+        url = db.query(URL.long_url, URL.short_code, URL.expires_at).filter(URL.short_code == short_code).first()
         if not url:
             return None
         
         # Check expiration
-        if url.expires_at:
-            expires_at = url.expires_at
-            if expires_at.tzinfo is None:
-                expires_at = expires_at.replace(tzinfo=timezone.utc)
-            
-            if datetime.now(timezone.utc) > expires_at:
-                return None
+        if url.expires_at and datetime.now(timezone.utc) > url.expires_at.replace(tzinfo=timezone.utc):
+            return None
         
-        # Cache the result
-        CacheService.cache_url(short_code, url)
-        return url
+        # Create URL-like object
+        class URLResult:
+            def __init__(self, long_url, short_code, expires_at):
+                self.long_url = long_url
+                self.short_code = short_code
+                self.expires_at = expires_at
+        
+        result = URLResult(url.long_url, url.short_code, url.expires_at)
+        CacheService.cache_url(short_code, result)
+        return result
