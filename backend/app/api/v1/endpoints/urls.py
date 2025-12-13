@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.schemas.url import URLCreate, URLResponse, URLListResponse
 from app.services.url_service import URLService, URLAlreadyExistsError, ShortCodeAlreadyExistsError
 from app.database.database import get_db
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -18,7 +19,7 @@ def create_url(url_data: URLCreate, db: Session = Depends(get_db)):
         )
 
         return URLResponse(
-            short_url=f"http://localhost:8000/{url_obj.short_code}",
+            short_url=f"{settings.BASE_URL}/{url_obj.short_code}",
             original_url=url_obj.long_url,
             expires_at=str(url_obj.expires_at) if url_obj.expires_at else None
         )
@@ -31,7 +32,7 @@ def create_url(url_data: URLCreate, db: Session = Depends(get_db)):
                 detail={
                     "message": f"URL already shortened. Existing short code: {e.existing_url.short_code}",
                     "existing_url": {
-                        "short_url": f"http://localhost:8000/{e.existing_url.short_code}",
+                        "short_url": f"{settings.BASE_URL}/{e.existing_url.short_code}",
                         "original_url": e.existing_url.long_url,
                         "expires_at": str(e.existing_url.expires_at) if e.existing_url.expires_at else None
                     }
@@ -40,7 +41,7 @@ def create_url(url_data: URLCreate, db: Session = Depends(get_db)):
         else:
             # Return existing URL for auto-generated codes
             return URLResponse(
-                short_url=f"http://localhost:8000/{e.existing_url.short_code}",
+                short_url=f"{settings.BASE_URL}/{e.existing_url.short_code}",
                 original_url=e.existing_url.long_url,
                 expires_at=str(e.existing_url.expires_at) if e.existing_url.expires_at else None
             )
@@ -56,7 +57,7 @@ def create_url(url_data: URLCreate, db: Session = Depends(get_db)):
 def list_urls(
     db: Session = Depends(get_db),
     page: int = Query(1, ge=1, description="Page number"),
-    limit: int = Query(10, ge=1, le=100, description="Items per page")
+    limit: int = Query(10, ge=1, le=50, description="Items per page")
 ):
     """List all URLs with pagination"""
     try:
@@ -64,7 +65,7 @@ def list_urls(
         
         url_responses = [
             URLResponse(
-                short_url=f"http://localhost:8000/{url.short_code}",
+                short_url=f"{settings.BASE_URL}/{url.short_code}",
                 original_url=url.long_url,
                 expires_at=str(url.expires_at) if url.expires_at else None
             )
@@ -73,10 +74,10 @@ def list_urls(
         
         return URLListResponse(
             urls=url_responses,
-            total=total,
+            total=total or len(url_responses),
             page=page,
             limit=limit,
-            total_pages=(total + limit - 1) // limit
+            total_pages=(total + limit - 1) // limit if total else 1
         )
         
     except Exception as e:

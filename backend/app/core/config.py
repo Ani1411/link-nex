@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     REDIS_URL: str # "redis://localhost:6379/0"
     CACHE_TTL: int = 60 * 60 * 24
     CORS_ORIGINS: str
+    DEBUG: bool = True
     
     class Config:
         env_file = ".env"
