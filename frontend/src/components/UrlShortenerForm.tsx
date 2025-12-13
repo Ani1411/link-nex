@@ -1,46 +1,59 @@
 'use client'
 
-import React, { JSX } from 'react';
+import React, { JSX, useCallback, useMemo, useTransition } from 'react';
 import { URLResponse, FormData } from '../interfaces/url.interface';
 import { useState } from 'react';
 import { urlService } from '@/services/url.service';
+
 import toast from 'react-hot-toast';
 
 
 export default function UrlShortenerForm(): JSX.Element {
-
+  const [isPending, startTransition] = useTransition();
   const [formData, setFormData] = useState<FormData>({
     originalUrl: '',
     customAlias: '',
     expiryDays: 30,
   });
   const [result, setResult] = useState<URLResponse | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
-  const [fieldErrors, setFieldErrors] = useState<{[key: string]: boolean}>({});
+  const [fieldErrors, setFieldErrors] = useState<{ [key: string]: boolean }>({});
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    setResult(null);
-    setFieldErrors({});
-
+  const isValidUrl = useMemo(() => {
     try {
-      const response = await urlService.createShortUrl(formData);
-      setResult(response);
-      toast.success('Short URL created successfully!');
+      return formData.originalUrl ? new URL(formData.originalUrl) : false;
+    } catch {
+      return false;
     }
-    catch (err:any) {
-      if (err) {
+  }, [formData.originalUrl]);
+
+  const handleSubmit = useCallback((e: React.FormEvent<HTMLFormElement>): void => {
+    e.preventDefault();
+
+    if (!isValidUrl) {
+      toast.error('Please enter a valid URL');
+      setFieldErrors({ originalUrl: true });
+      return;
+    }
+
+    startTransition(async () => {
+      setError('');
+      setResult(null);
+      setFieldErrors({});
+
+      try {
+        const response = await urlService.createShortUrl(formData);
+        setResult(response);
+        toast.success('Short URL created successfully!');
+      } catch (err: any) {
         const errorMessage = typeof err.response?.data?.detail === 'string'
           ? err.response.data.detail
           : err.response?.data?.detail?.message || 'Failed to create short URL';
         setError(errorMessage);
         toast.error(errorMessage);
-        
+
         // Highlight fields based on error type
-        const errors: {[key: string]: boolean} = {};
+        const errors: { [key: string]: boolean } = {};
         if (errorMessage.toLowerCase().includes('url') || errorMessage.toLowerCase().includes('invalid')) {
           errors.originalUrl = true;
         }
@@ -51,29 +64,25 @@ export default function UrlShortenerForm(): JSX.Element {
           errors.expiryDays = true;
         }
         setFieldErrors(errors);
-      } else {
-        setError('An unexpected error occurred');
-        toast.error('An unexpected error occurred');
       }
-    } finally {
-      setLoading(false);
-    }
-  }
+    });
+  }, [formData, isValidUrl]);
 
-  const copyToClipboard = async (text: string): Promise<void> => {
+  const copyToClipboard = useCallback(async (text: string): Promise<void> => {
     try {
       await navigator.clipboard.writeText(text);
       toast.success('Copied to clipboard! 📋');
-    } catch (err) {
-      console.error('Failed to copy:', err);
+    } catch {
       toast.error('Failed to copy to clipboard');
     }
-  };
+  }, []);
 
-  const resetForm = (): void => {
+  const resetForm = useCallback((): void => {
     setResult(null);
     setFormData({ originalUrl: '', customAlias: '', expiryDays: 30 });
-  };
+    setError('');
+    setFieldErrors({});
+  }, []);
 
   if (result) {
     return (
@@ -128,11 +137,10 @@ export default function UrlShortenerForm(): JSX.Element {
             required
             value={formData.originalUrl}
             onChange={(e) => setFormData({ ...formData, originalUrl: e.target.value })}
-            className={`w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border-2 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 transition-all duration-300 bg-slate-700/50 hover:bg-slate-700 placeholder-gray-400 text-white ${
-              fieldErrors.originalUrl 
-                ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
-                : 'border-slate-600 focus:ring-blue-500 focus:border-transparent'
-            }`}
+            className={`w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border-2 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 transition-all duration-300 bg-slate-700/50 hover:bg-slate-700 placeholder-gray-400 text-white ${fieldErrors.originalUrl
+              ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+              : 'border-slate-600 focus:ring-blue-500 focus:border-transparent'
+              }`}
             placeholder="https://your-long-url.com/path"
           />
         </div>
@@ -145,11 +153,10 @@ export default function UrlShortenerForm(): JSX.Element {
             type="text"
             value={formData.customAlias}
             onChange={(e) => setFormData({ ...formData, customAlias: e.target.value })}
-            className={`w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border-2 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 transition-all duration-300 bg-slate-700/50 hover:bg-slate-700 placeholder-gray-400 text-white ${
-              fieldErrors.customAlias 
-                ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
-                : 'border-slate-600 focus:ring-blue-500 focus:border-transparent'
-            }`}
+            className={`w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border-2 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 transition-all duration-300 bg-slate-700/50 hover:bg-slate-700 placeholder-gray-400 text-white ${fieldErrors.customAlias
+              ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+              : 'border-slate-600 focus:ring-blue-500 focus:border-transparent'
+              }`}
             placeholder="my-awesome-link"
           />
         </div>
@@ -164,20 +171,19 @@ export default function UrlShortenerForm(): JSX.Element {
             max="365"
             value={formData.expiryDays}
             onChange={(e) => setFormData({ ...formData, expiryDays: parseInt(e.target.value) || 30 })}
-            className={`w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border-2 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 transition-all duration-300 bg-slate-700/50 hover:bg-slate-700 text-white ${
-              fieldErrors.expiryDays 
-                ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
-                : 'border-slate-600 focus:ring-blue-500 focus:border-transparent'
-            }`}
+            className={`w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border-2 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-2 transition-all duration-300 bg-slate-700/50 hover:bg-slate-700 text-white ${fieldErrors.expiryDays
+              ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+              : 'border-slate-600 focus:ring-blue-500 focus:border-transparent'
+              }`}
           />
         </div>
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={isPending || !isValidUrl}
           className="w-full bg-linear-to-r from-blue-600 to-purple-600 text-white py-3 sm:py-4 px-4 sm:px-6 text-sm sm:text-base md:text-lg rounded-xl sm:rounded-2xl hover:from-blue-700 hover:to-purple-700 transform hover:scale-[1.02] hover:-translate-y-1 transition-all duration-300 font-bold shadow-xl hover:shadow-2xl cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
         >
-          {loading ? '⏳ Creating...' : '🚀 Create Magic Link'}
+          {isPending ? '⏳ Creating...' : '🚀 Create Magic Link'}
         </button>
       </form>
     </div>
