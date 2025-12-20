@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.health import startup_health_check, get_database_health
-from app.services.url_service import URLService
 from app.database.database import get_db
 from app.middleware.rate_limit import rate_limit_middleware
 from cachetools import TTLCache
@@ -65,11 +64,14 @@ async def health_check():
 @app.get("/health/db")
 async def db_health_check():
     """Comprehensive database health check with detailed metrics"""
+    print('Comprehensive database health check with detailed metrics"')
     return get_database_health()
 
 
 @app.get("/{short_code}")
 def redirect_url(short_code: str, db: Session = Depends(get_db)):
+    from app.services.url_service import URLService
+    
     """Redirect to the original URL given a short code"""
     
     # Check in-memory cache first

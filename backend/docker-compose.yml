@@ -1,0 +1,55 @@
+services:
+  db:
+    image: postgres:18-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: url_shortener_db
+      PG_DATA: /var/lib/postgresql/18/docker
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./pgdata:/var/lib/postgresql/18/docker
+    networks:
+      - url_shrtn_network
+
+  redis:
+    image: redis:8.4-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    depends_on:
+      - db
+    networks:
+      - url_shrtn_network
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+    volumes:
+      - ./app:/app/app
+    ports:
+      - '8000:8000'
+    restart: always
+    environment:
+      PROJECT_NAME: URL Shortener
+      VERSION: "1.0.0"
+      DATABASE_URL: 'postgresql://postgres:password@db:5432/url_shortener_db'
+      SECRET_KEY: 'your-secret-key-here'
+      BASE_URL: 'http://127.0.0.1:8000'
+      REDIS_URL: 'redis://redis:6379/0'
+      CACHE_TTL: 1440
+      CORS_ORIGINS: 'http://127.0.0.1:3000,http://localhost:3000'
+      DEBUG: True
+    depends_on:
+      - db
+      - redis
+    networks:
+      - url_shrtn_network
+
+networks:
+  url_shrtn_network:
+    driver: bridge
+      
