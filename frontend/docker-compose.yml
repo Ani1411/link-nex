@@ -1,0 +1,19 @@
+services:
+  frontend:
+    build: 
+      context: .
+      dockerfile: docker/Dockerfile
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./:/app/
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    networks:
+      - url_shrtn_network
+
+networks:
+  url_shrtn_network:
+    driver: bridge
